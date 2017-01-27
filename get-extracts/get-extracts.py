@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Created by Brian Turley
 # Solutions Engineer
 # Ookla
