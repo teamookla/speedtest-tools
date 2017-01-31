@@ -3,9 +3,7 @@
 # Created by Brian Turley
 # Solutions Engineer
 # Ookla
-# 4/22/16
-# Updated 1/18/17
-# Tested in Python 2.7 on OS X 10.10.5, Ubuntu 14, and Windows 10
+# Updated 1/30/17
 
 # This Python script queries a list of available data extract files from Speedtest Intelligence,
 # determines what data sets are available, and then downloads the most recent version of each.
@@ -21,7 +19,7 @@ import sys
 
 theurl = 'https://intelligence.speedtest.net/extracts'
 
-#Please replace MyUserName and MyDataPassword below with your
+#Please replace MyApiKey and MyApiSecret below with your
 #organization's API key.
 
 username = 'MyApiKey'
