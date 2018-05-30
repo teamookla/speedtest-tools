@@ -1,146 +1,81 @@
-#!/usr/bin/env python
 
-# Created by Brian Turley
-# Solutions Engineer
 # Ookla
-# Updated 1/30/17
+# Updated 5/30/18
 
 # This Python script queries a list of available data extract files from Speedtest Intelligence,
 # determines what data sets are available, and then downloads the most recent version of each.
 # By default the files are stored in the directory where the script is running, but modifying
 # the storageDir variable will allow you to specify a directory.
 
-import urllib2
+try: # Python3
+    import urllib.request as compatible_urllib
+except ImportError: # Python 2
+    import urllib2 as compatible_urllib
+
 import json
 import os
 import base64
 import sys
 
+extracts_url = 'https://intelligence.speedtest.net/extracts'
 
-theurl = 'https://intelligence.speedtest.net/extracts'
+# Please replace MyApiKey and MyApiSecret below with your organization's API key.
+username = 'my_api_key'
+password = 'my_api_secret'
 
-#Please replace MyApiKey and MyApiSecret below with your
-#organization's API key.
-
-username = 'MyApiKey'
-password = 'MyApiSecret'
-
-
-
-#By default, the script stores the extract files in the directory where the script is running
-#To specify a storage directory, change this value to a string represting the directory where
-#the files should be stored.
-#Example: storageDir = '/data/ookla/extracts'
-
+# By default, the script stores the extract files in the directory where the script is running
+# To specify a storage directory, change this value to a string represting the directory where
+# the files should be stored.
+# Example: storageDir = '/data/ookla/extracts'
 storageDir = os.getcwd()
 
-opener = urllib2.build_opener()
-urllib2.install_opener(opener)
-
-#request json list of files
+opener = compatible_urllib.build_opener()
+compatible_urllib.install_opener(opener)
 opener.addheaders = [('Accept', 'application/json')]
 
-#setup authentication
-base64string = base64.b64encode('%s:%s' % (username, password))
+# setup authentication
+login_credentials = '%s:%s' % (username, password)
+base64string = base64.b64encode(login_credentials.encode('utf-8')).decode('ascii')
 opener.addheaders = [('Authorization', 'Basic %s' % base64string)]
 
-#If login page is returned, raise error message.
-result = urllib2.urlopen(theurl)
-if result.info().type == "text/html":
-    print "Authentication error.\nPlease verify that the API key is correct."
+# makes request for files
+response = compatible_urllib.urlopen(extracts_url).read()
+try:
+    content = json.loads(response)
+except ValueError as err:
+    print(err)
     sys.exit()
 
-try:
-    response = result.read()
-except urllib2.HTTPError, err:
-   if err.code == 500:
-       print "Error: The account associated with this API key does not have access to data extracts.\nPlease contact your technical account manager to enable data extracts for this account."
-       sys.exit()
-try:
-    json_data = json.loads(response)
-except ValueError, e:
-    print e
-    sys.exit()
+#############################################################
+# loop through contents, sort through files and directories
+def sort_files_and_directories(contents):
+    for entry in contents:
+        if entry['type'] == 'file' and entry['name'].find('headers') == -1 and '_20' in entry['name']:
+            filter(entry)
+        elif entry['type'] == 'dir':
+            subdir = extracts_url + entry['url']
+            files = json.loads(compatible_urllib.urlopen(subdir).read())
+            sort_files_and_directories(files)
 
+# determine if file should be downloaded - check for new datasets and most current file for exisiting datasets
+def filter(file):
+    # identify the dataset by the file name prefix
+    dataset = file['name'][:file['name'].index('_20')]
+    if dataset not in files or dataset in files and file['mtime'] > files[dataset]['age']:
+        files[dataset] = {'name': file['name'], 'url': file['url'], 'age': file['mtime']}
+
+def download(files):
+    if len(files):
+        for data_set, file in files.items():
+            response = compatible_urllib.urlopen(file['url'])
+            flocation = storageDir + '/' + file['name']
+            print(("Downloading: %s" % (file['name'])))
+            with open(flocation, 'wb') as content:
+                content.write(response.read())
+        return
+    print("No data extract files found. If this is an error, please contact your technical account manager.")
+
+#############################################################
 files = {}
-
-#loop through list of files to find the most recent of each extract type
-for x in json_data:
-    #exclude directories and column header files
-    if x['type'] == 'file' and x['name'].find('headers') == -1:
-
-        #set the extract type by according to the file name prefix
-        if '_20' in x['name']:
-            sep = x['name'].index('_20')
-            ftype = x['name'][:sep]
-
-            if ftype in files:
-                #if this data set already exist, check if this file is newer.
-                if x['mtime'] > files[ftype]['age']:
-                    files[ftype]['name'] = x['name']
-                    files[ftype]['url'] = x['url']
-                    files[ftype]['age'] = x['mtime']
-            else:
-                #If no other files of this data set exist, and this file.
-                files[ftype] = {}
-                files[ftype]['name'] = x['name']
-                files[ftype]['url'] = x['url']
-                files[ftype]['age'] = x['mtime']
-
-    #loop through sub directories
-    if x['type'] == 'dir':
-        subdir = theurl + x['url']
-
-        subresult = urllib2.urlopen(subdir)
-        subjson = json.loads(subresult.read())
-
-        for y in subjson:
-            #exclude directories and column header files
-            if y['type'] == 'file' and y['name'].find('headers') == -1:
-
-                #set the extract type by according to the file name prefix
-                if '_20' in y['name']:
-                    sep = y['name'].index('_20')
-                    ftype = y['name'][:sep]
-
-                    if ftype in files:
-                        #if this data set already exist, check if this file is newer.
-                        if y['mtime'] > files[ftype]['age']:
-                            files[ftype]['name'] = y['name']
-                            files[ftype]['url'] = y['url']
-                            files[ftype]['age'] = y['mtime']
-                    else:
-                        #If no other files of this data set exist, and this file.
-                        files[ftype] = {}
-                        files[ftype]['name'] = y['name']
-                        files[ftype]['url'] = y['url']
-                        files[ftype]['age'] = y['mtime']
-
-
-if len(files) == 0:
-    print "No data extract files found. If this is an error, please contact your technical account manager."
-
-#download most recent files
-for key, value in files.iteritems():
-    fname = value['name']
-    furl = value['url']
-    u = urllib2.urlopen(furl)
-    flocation = storageDir + '/' + fname
-    f = open(flocation, 'wb')
-    meta = u.info()
-    file_size = int(meta.getheaders("Content-Length")[0])
-    print "Downloading: %s Bytes: %s" % (fname, file_size)
-
-    file_size_dl = 0
-    block_sz = 8192
-    while True:
-        buffer = u.read(block_sz)
-        if not buffer:
-            break
-
-        file_size_dl += len(buffer)
-        f.write(buffer)
-        status = r"%10d  [%3.2f%%]" % (file_size_dl, file_size_dl * 100. / file_size)
-        status = status + chr(8)*(len(status)+1)
-        print status,
-
+sort_files_and_directories(content)
+download(files)
