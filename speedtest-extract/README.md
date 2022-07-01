@@ -69,3 +69,10 @@ When enabled, request caching will speed up interactive filtering and viewing of
 This is disabled by default as it has little use when executing the command periodically or unattended (via cron/etc), but can be helpful when searching through the extract list and formatting a command to retrieve specific files. 
 
 To enable, set the `cache_duration_minutes` value in the config file to a positive integer and adjust the `cache_filename` if desired.
+
+### Switching from the legacy python script
+
+To replicate the functionality of the python script, use this command:
+```
+speedtest-extract download --confirm
+```
