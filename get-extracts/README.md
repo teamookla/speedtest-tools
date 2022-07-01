@@ -1,3 +1,0 @@
-#get-extracts.py
-
-This script queries the Speedtest Intelligence Data Extracts API and determines the newest file for each data type available, then downloads each file to the directory where the script was initiated. Detailed documentation on this script and the Speedtest Intelligence Data Extracts API can be found at https://support.ookla.com/hc/en-us/articles/115002187768-Speedtest-Intelligence-Data-Extracts-API.

@@ -1,0 +1,7 @@
+.idea
+build/
+main
+speedtest-extract
+*.yaml
+*.zip
+.*.json
