@@ -88,7 +88,7 @@ func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, over
 			}
 			downloadSize := stats.Size()
 			if item.Size != downloadSize {
-				return errors.New(fmt.Sprintf("filesize mismatch for %s. expected: %d, received: %d", e.Name, item.Size, downloadSize))
+				return fmt.Errorf("filesize mismatch for %s. expected: %d, received: %d", e.Name, item.Size, downloadSize)
 			}
 		} else {
 			log.Info(fmt.Sprintf("%s exists, skipping. re-run with --overwrite-existing to download anyway", e.Name))

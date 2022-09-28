@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -84,7 +83,7 @@ func main() {
 					if err != nil {
 						return err
 					}
-					return errors.New(fmt.Sprintf("config file not found, wrote default values to %s", configFile))
+					return fmt.Errorf("config file not found, wrote default values to %s", configFile)
 				}
 				return err
 			}
