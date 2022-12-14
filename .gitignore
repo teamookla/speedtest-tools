@@ -1,0 +1,15 @@
+# Logs
+logs
+*.log
+
+# IDEs
+.idea
+*.sublime-*
+.vscode
+.DS_Store
+*.swp
+
+build/
+main
+*.yaml
+*.zip
