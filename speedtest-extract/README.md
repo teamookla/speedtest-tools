@@ -76,3 +76,12 @@ To replicate the functionality of the python script, use this command:
 ```
 speedtest-extract download --confirm
 ```
+
+### Using through Docker Container locally
+
+When you're ready, start your application by running: 
+```shell
+docker compose up --build
+```
+
+Your application will be available at ```http://localhost:2023```
