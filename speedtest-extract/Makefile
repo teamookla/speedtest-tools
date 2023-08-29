@@ -12,7 +12,6 @@ build:
 	go get -t .
 	go build -ldflags $(LDFLAGS) -o build/speedtest-extract .
 
-
 dist: build test
 	@- $(foreach B,$(BINARIES),  \
 		$(eval GOOS = $(word 1,$(subst -, ,$(B)))) \

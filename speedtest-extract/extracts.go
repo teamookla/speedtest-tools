@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -116,7 +115,7 @@ func ReadExtractsCache() *ExtractsCache {
 		log.Debug("cache enabled")
 		hasCache := false
 		cacheFilename := config.CacheFilename
-		cacheFile, err := ioutil.ReadFile(cacheFilename)
+		cacheFile, err := os.ReadFile(cacheFilename)
 		if err == nil {
 			log.Debug(fmt.Sprintf("found cache file %s", cacheFilename))
 			err = json.Unmarshal(cacheFile, &cache)
