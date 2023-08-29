@@ -41,7 +41,7 @@ speedtest-extract list
 speedtest-extract --filter-groups web,native list
 ```
 
-* Filter by specific datset groups
+* Filter by specific dataset groups
 ```
 speedtest-extract --filter-datasets city,state list
 ```

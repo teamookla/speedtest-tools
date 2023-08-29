@@ -2,7 +2,7 @@ package main
 
 import (
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
+	"os"
 )
 
 type Config struct {
@@ -26,7 +26,7 @@ var DefaultConfig = Config{
 var DefaultConfigFile = "speedtest-extract.yaml"
 
 func ReadConfig(configFile string) (*Config, error) {
-	contents, err := ioutil.ReadFile(configFile)
+	contents, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func WriteConfig() error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(DefaultConfigFile, configYaml, 0600)
+	err = os.WriteFile(DefaultConfigFile, configYaml, 0600)
 	if err != nil {
 		return err
 	}

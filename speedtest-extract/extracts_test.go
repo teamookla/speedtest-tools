@@ -3,9 +3,9 @@ package main
 import (
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -21,7 +21,7 @@ type FilterCounts struct {
 
 func ReadResponseFixture(name string) ([]byte, error) {
 	file := name + ".json"
-	content, err := ioutil.ReadFile(filepath.Join("fixtures", file))
+	content, err := os.ReadFile(filepath.Join("fixtures", file))
 	if err != nil {
 		return nil, err
 	}
