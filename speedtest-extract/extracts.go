@@ -20,11 +20,11 @@ type ExtractItem struct {
 	Size     int64                     `json:"size"`
 	Datasets map[string][]*ExtractItem `json:"-"`
 	Latest   map[string]*ExtractItem   `json:"-"`
-	Children []ExtractItem             `json:"-"`
+	Children []*ExtractItem            `json:"-"`
+	Groups   []string                  `json:"-"`
 }
 
 type ExtractFile struct {
-	Group   string
 	Dataset string
 	Name    string
 	Latest  bool
@@ -33,8 +33,8 @@ type ExtractFile struct {
 }
 
 type ExtractsCache struct {
-	Timestamp time.Time                `json:"timestamp"`
-	Responses map[string][]ExtractItem `json:"responses"`
+	Timestamp time.Time                 `json:"timestamp"`
+	Responses map[string][]*ExtractItem `json:"responses"`
 }
 
 func (e *ExtractItem) IsDirectory() bool {
@@ -56,7 +56,7 @@ func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, over
 	if item.IsDataset() {
 		paths := []string{config.StorageDirectory}
 		if useFileHierarchy {
-			paths = append(paths, e.Group)
+			paths = append(paths, e.Item.Groups...)
 			paths = append(paths, e.Dataset)
 		}
 		var path string
@@ -135,15 +135,15 @@ func ReadExtractsCache() *ExtractsCache {
 			log.Debug("no valid cache file found, creating new")
 			cache = &ExtractsCache{
 				Timestamp: time.Time{},
-				Responses: make(map[string][]ExtractItem),
+				Responses: make(map[string][]*ExtractItem),
 			}
 		}
 	}
 	return cache
 }
 
-func GetExtracts(client *resty.Client, path string, cache *ExtractsCache) ([]ExtractItem, error) {
-	var extracts []ExtractItem
+func GetExtracts(client *resty.Client, path string, cache *ExtractsCache) ([]*ExtractItem, error) {
+	var extracts []*ExtractItem
 	url := config.ExtractUrl + path
 
 	cacheValid := false
@@ -190,39 +190,47 @@ func GetExtracts(client *resty.Client, path string, cache *ExtractsCache) ([]Ext
 
 	for i, e := range extracts {
 		if e.IsDirectory() {
+			if len(e.Groups) == 0 {
+				e.Groups = strings.Split(strings.Trim(e.Url, "/"), "/")
+			}
+
 			subDir := e.Url
 			children, err := GetExtracts(client, subDir, cache)
 			if err != nil {
 				return nil, err
 			}
-			extracts[i].Children = make([]ExtractItem, 0)
+			extracts[i].Children = make([]*ExtractItem, 0)
 			for _, child := range children {
 				if child.IsDirectory() || child.IsDataset() {
 					extracts[i].Children = append(extracts[i].Children, child)
+
+					groupUrl := child.Url
+					if child.IsDataset() {
+						groupUrl = subDir
+					}
+					trimmed := strings.Trim(groupUrl, "/")
+					child.Groups = strings.Split(trimmed, "/")
 				}
 
 				if child.IsDataset() {
-					currentDataset := &extracts[i].Children[len(extracts[i].Children)-1]
-					name := currentDataset.DatasetName()
+					name := child.DatasetName()
 					if extracts[i].Latest == nil {
 						extracts[i].Latest = make(map[string]*ExtractItem, 0)
 						extracts[i].Datasets = make(map[string][]*ExtractItem, 0)
 					}
-					extracts[i].Datasets[name] = append(extracts[i].Datasets[name], currentDataset)
+					extracts[i].Datasets[name] = append(extracts[i].Datasets[name], child)
 
 					if latest, ok := extracts[i].Latest[name]; !ok || extracts[i].Modified > latest.Modified {
-						extracts[i].Latest[name] = currentDataset
+						extracts[i].Latest[name] = child
 					}
 				}
-
 			}
 		}
 	}
-
 	return extracts, nil
 }
 
-func FilterFiles(items []ExtractItem, groupFilter []string, datasetFilter []string, filenameFilter []string, since *time.Time, latestOnly bool, files []ExtractFile) []ExtractFile {
+func FilterFiles(items []*ExtractItem, groupFilter []string, filenameFilter []string, since *time.Time, latestOnly bool, files []ExtractFile) []ExtractFile {
 	if since != nil {
 		latestOnly = false
 	}
@@ -231,39 +239,48 @@ func FilterFiles(items []ExtractItem, groupFilter []string, datasetFilter []stri
 	}
 	for _, i := range items {
 		if i.IsDirectory() {
-			group := strings.ReplaceAll(i.Name, "/", "")
-			if len(groupFilter) == 0 || contains(group, groupFilter) {
+			groups := i.Groups
+
+			matchedGroup := false
+			if len(groupFilter) == 0 {
+				matchedGroup = true
+			}
+			//TODO this group filter matches any of the terms, is there a need for an "all" filter?
+			for _, g := range groups {
+				if contains(g, groupFilter) {
+					matchedGroup = true
+				}
+			}
+
+			if matchedGroup {
 				for name, datasets := range i.Datasets {
 					dataset := name
-					if len(datasetFilter) == 0 || contains(dataset, datasetFilter) {
-						for _, d := range datasets {
-							filename := d.Name
-							if len(filenameFilter) == 0 || contains(filename, filenameFilter) {
-								if !latestOnly || d == i.Latest[name] {
-									updated := time.UnixMilli(d.Modified).UTC()
-									if since == nil || updated.Equal(*since) || updated.After(*since) {
-										log.WithFields(log.Fields{
-											"group":   group,
-											"dataset": dataset,
-											"latest":  d == i.Latest[name],
-											"updated": updated,
-										}).Debug(fmt.Sprintf("found file matching all filters: %s", filename))
-										files = append(files, ExtractFile{
-											Group:   group,
-											Dataset: dataset,
-											Name:    filename,
-											Latest:  d == i.Latest[name],
-											Updated: updated,
-											Item:    d,
-										})
-									}
+					for _, d := range datasets {
+						filename := d.Name
+						if len(filenameFilter) == 0 || contains(filename, filenameFilter) {
+							if !latestOnly || d == i.Latest[name] {
+								updated := time.UnixMilli(d.Modified).UTC()
+								if since == nil || updated.Equal(*since) || updated.After(*since) {
+									log.WithFields(log.Fields{
+										"groups":  groups,
+										"dataset": dataset,
+										"latest":  d == i.Latest[name],
+										"updated": updated,
+									}).Debug(fmt.Sprintf("found file matching all filters: %s", filename))
+									files = append(files, ExtractFile{
+										Dataset: dataset,
+										Name:    filename,
+										Latest:  d == i.Latest[name],
+										Updated: updated,
+										Item:    d,
+									})
 								}
 							}
 						}
 					}
 				}
 			}
-			files = FilterFiles(i.Children, groupFilter, datasetFilter, filenameFilter, since, latestOnly, files)
+			files = FilterFiles(i.Children, groupFilter, filenameFilter, since, latestOnly, files)
 		}
 	}
 	return files
