@@ -24,7 +24,6 @@ var config Config
 type GlobalOptions struct {
 	ShowAll        bool
 	GroupFilter    []string
-	DatasetFilter  []string
 	FilenameFilter []string
 	Since          *time.Time
 }
@@ -55,10 +54,6 @@ func main() {
 			&cli.StringFlag{
 				Name:  "filter-groups",
 				Usage: "Limit extracts to this comma-delimited list of groups",
-			},
-			&cli.StringFlag{
-				Name:  "filter-datasets",
-				Usage: "Limit extracts to this comma-delimited list of datasets",
 			},
 			&cli.StringFlag{
 				Name:  "filter-filenames",
@@ -138,7 +133,6 @@ func GetClient() *resty.Client {
 func GetGlobalOptions(context *cli.Context) (*GlobalOptions, error) {
 	showAll := context.Bool("all")
 	groupFilter := context.String("filter-groups")
-	datasetFilter := context.String("filter-datasets")
 	filenameFilter := context.String("filter-filenames")
 	since := context.String("since")
 	verbose := context.Bool("verbose")
@@ -148,9 +142,6 @@ func GetGlobalOptions(context *cli.Context) (*GlobalOptions, error) {
 	}
 	if len(groupFilter) > 0 {
 		args.GroupFilter = strings.Split(groupFilter, ",")
-	}
-	if len(datasetFilter) > 0 {
-		args.DatasetFilter = strings.Split(datasetFilter, ",")
 	}
 	if len(filenameFilter) > 0 {
 		args.FilenameFilter = strings.Split(filenameFilter, ",")
@@ -177,9 +168,9 @@ func GetGlobalOptions(context *cli.Context) (*GlobalOptions, error) {
 	}
 
 	log.WithFields(log.Fields{
-		"all":            showAll,
-		"groupFilter":    args.GroupFilter,
-		"datasetFilter":  args.DatasetFilter,
+		"all":         showAll,
+		"groupFilter": args.GroupFilter,
+		//"datasetFilter":  args.DatasetFilter,
 		"filenameFilter": args.FilenameFilter,
 		"since":          args.Since,
 	}).Debug("global flags")
@@ -198,7 +189,7 @@ func DownloadExtracts(context *cli.Context) error {
 func ListFiles(files []ExtractFile) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"Group", "Dataset", "File", "Updated", "Latest"})
+	t.AppendHeader(table.Row{"Groups", "File", "Updated", "Latest"})
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 		{Number: 2, AutoMerge: true},
@@ -208,8 +199,9 @@ func ListFiles(files []ExtractFile) {
 		if f.Latest {
 			latest = "*"
 		}
+		groups := strings.Join(f.Item.Groups, ", ")
 		row := table.Row{
-			f.Group, f.Dataset, f.Name, f.Updated, latest,
+			groups, f.Name, f.Updated, latest,
 		}
 		t.AppendRow(row)
 	}
@@ -236,7 +228,7 @@ func ExtractHandler(context *cli.Context, command string) error {
 		return err
 	}
 	WriteExtractsCache(cache)
-	files := FilterFiles(extracts, args.GroupFilter, args.DatasetFilter, args.FilenameFilter, args.Since, !args.ShowAll, nil)
+	files := FilterFiles(extracts, args.GroupFilter, args.FilenameFilter, args.Since, !args.ShowAll, nil)
 
 	if len(files) == 0 {
 		return ErrNoMatchingFiles
