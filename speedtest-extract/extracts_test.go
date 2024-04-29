@@ -133,7 +133,6 @@ func TestFilters(t *testing.T) {
 				}
 			}
 			assert.True(t, matchedGroup, "all but android and web groups should be filtered")
-			//assert.Contains(t, groups, f.Group, "all but android and web groups should be filtered")
 		}
 	})
 
