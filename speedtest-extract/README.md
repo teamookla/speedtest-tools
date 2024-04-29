@@ -18,7 +18,6 @@ COMMANDS:
 GLOBAL OPTIONS:
    --all                     Show all extract files, not just latest available (default: false)
    --config value            Specify the config file (default: "speedtest-extract.yaml")
-   --filter-datasets value   Limit extracts to this comma-delimited list of datasets
    --filter-filenames value  Limit extracts to this comma-delimited list of filenames
    --filter-groups value     Limit extracts to this comma-delimited list of groups
    --since value             Limit extracts to ones updated since the provided date (YYYY-MM-DD)
@@ -36,14 +35,9 @@ Note: A default config file will be generated for you on first run. Update it wi
 ```
 speedtest-extract list
 ```
-* Filter by specific extract groups
+* Filter by specific extract groups, which are defined by the extract hierarchy directory structure.
 ```
 speedtest-extract --filter-groups web,native list
-```
-
-* Filter by specific dataset groups
-```
-speedtest-extract --filter-datasets city,state list
 ```
 
 * Show all extracts updated since a specific date
