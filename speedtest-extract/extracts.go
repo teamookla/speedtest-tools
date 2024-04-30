@@ -230,7 +230,7 @@ func GetExtracts(client *resty.Client, path string, cache *ExtractsCache) ([]*Ex
 	return extracts, nil
 }
 
-func FilterFiles(items []*ExtractItem, groupFilter []string, filenameFilter []string, since *time.Time, latestOnly bool, files []ExtractFile) []ExtractFile {
+func FilterFiles(items []*ExtractItem, groupFilter []string, datasetFilter []string, filenameFilter []string, since *time.Time, latestOnly bool, files []ExtractFile) []ExtractFile {
 	if since != nil {
 		latestOnly = false
 	}
@@ -255,32 +255,34 @@ func FilterFiles(items []*ExtractItem, groupFilter []string, filenameFilter []st
 			if matchedGroup {
 				for name, datasets := range i.Datasets {
 					dataset := name
-					for _, d := range datasets {
-						filename := d.Name
-						if len(filenameFilter) == 0 || contains(filename, filenameFilter) {
-							if !latestOnly || d == i.Latest[name] {
-								updated := time.UnixMilli(d.Modified).UTC()
-								if since == nil || updated.Equal(*since) || updated.After(*since) {
-									log.WithFields(log.Fields{
-										"groups":  groups,
-										"dataset": dataset,
-										"latest":  d == i.Latest[name],
-										"updated": updated,
-									}).Debug(fmt.Sprintf("found file matching all filters: %s", filename))
-									files = append(files, ExtractFile{
-										Dataset: dataset,
-										Name:    filename,
-										Latest:  d == i.Latest[name],
-										Updated: updated,
-										Item:    d,
-									})
+					if len(datasetFilter) == 0 || contains(dataset, datasetFilter) {
+						for _, d := range datasets {
+							filename := d.Name
+							if len(filenameFilter) == 0 || contains(filename, filenameFilter) {
+								if !latestOnly || d == i.Latest[name] {
+									updated := time.UnixMilli(d.Modified).UTC()
+									if since == nil || updated.Equal(*since) || updated.After(*since) {
+										log.WithFields(log.Fields{
+											"groups":  groups,
+											"dataset": dataset,
+											"latest":  d == i.Latest[name],
+											"updated": updated,
+										}).Debug(fmt.Sprintf("found file matching all filters: %s", filename))
+										files = append(files, ExtractFile{
+											Dataset: dataset,
+											Name:    filename,
+											Latest:  d == i.Latest[name],
+											Updated: updated,
+											Item:    d,
+										})
+									}
 								}
 							}
 						}
 					}
 				}
 			}
-			files = FilterFiles(i.Children, groupFilter, filenameFilter, since, latestOnly, files)
+			files = FilterFiles(i.Children, groupFilter, datasetFilter, filenameFilter, since, latestOnly, files)
 		}
 	}
 	return files
