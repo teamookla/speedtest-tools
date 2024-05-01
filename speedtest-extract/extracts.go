@@ -44,11 +44,16 @@ func (e *ExtractItem) IsDirectory() bool {
 func (e *ExtractItem) IsDataset() bool {
 	return e.Type == "file" &&
 		!strings.Contains(e.Name, "headers") && //ignore header files
-		strings.Contains(e.Name, "_20") //ensure it's a filename containing a date to filter non-relevant files
+		(strings.Contains(e.Name, "_20") || //ensure it's a filename containing a date to filter non-relevant files
+			strings.Contains(e.Name, "_export")) //newer CQoE files do not have the same filename structure
 }
 
 func (e *ExtractItem) DatasetName() string {
-	return e.Name[:strings.Index(e.Name, "_20")]
+	if strings.Contains(e.Name, "_export") || strings.Contains(e.Name, "csv.gz") {
+		return strings.Split(e.Name, "_")[0]
+	} else {
+		return e.Name[:strings.Index(e.Name, "_20")]
+	}
 }
 
 func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, overwriteExisting bool) error {
