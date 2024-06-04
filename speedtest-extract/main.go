@@ -127,10 +127,12 @@ func main() {
 	}
 }
 
-func GetClient() *resty.Client {
+func GetClient(downloadClient bool) *resty.Client {
 	client := resty.New()
-	client.SetBasicAuth(config.ApiKey, config.ApiSecret)
-	client.SetHeader("Content-Type", "application/json")
+	if !downloadClient { //we only need to send these headers to the extract service, not for file download
+		client.SetBasicAuth(config.ApiKey, config.ApiSecret)
+		client.SetHeader("Content-Type", "application/json")
+	}
 	client.SetHeader("User-Agent", fmt.Sprintf("ookla/speedtest-extract/%s", GetVersion()))
 	return client
 }
@@ -231,7 +233,7 @@ func ExtractHandler(context *cli.Context, command string) error {
 	}).Debug("config values")
 
 	cache := ReadExtractsCache()
-	client := GetClient()
+	client := GetClient(false)
 	extracts, err := GetExtracts(client, "", cache)
 	if err != nil {
 		return err
@@ -276,8 +278,9 @@ func ExtractHandler(context *cli.Context, command string) error {
 		}
 
 		if download {
+			downloadClient := GetClient(true)
 			for _, f := range files {
-				err = f.Download(client, useFileHierarchy, overwriteExisting)
+				err = f.Download(downloadClient, useFileHierarchy, overwriteExisting)
 				if err != nil {
 					//print the download error, but dont stop execution (should this be configurable?)
 					log.WithError(err).Error(fmt.Sprintf("error downloading %s", f.Item.Name))

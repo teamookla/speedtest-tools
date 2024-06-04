@@ -79,6 +79,7 @@ func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, over
 		_, err := os.Stat(fileName)
 		if overwriteExisting || (err != nil && errors.Is(err, os.ErrNotExist)) {
 			log.Info(fmt.Sprintf("Downloading %s to %s", e.Name, path))
+			log.Debug(fmt.Sprintf("Downloading from %s", item.Url))
 			_, err = client.R().
 				SetOutput(fileName).
 				Get(item.Url)
