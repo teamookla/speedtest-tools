@@ -234,6 +234,7 @@ func ExtractHandler(context *cli.Context, command string) error {
 
 	cache := ReadExtractsCache()
 	client := GetClient(false)
+	log.Debug(fmt.Sprintf("Client headers: %s", client.Header))
 	extracts, err := GetExtracts(client, "", cache)
 	if err != nil {
 		return err
@@ -279,6 +280,7 @@ func ExtractHandler(context *cli.Context, command string) error {
 
 		if download {
 			downloadClient := GetClient(true)
+			log.Debug(fmt.Sprintf("Download client headers: %s", downloadClient.Header))
 			for _, f := range files {
 				err = f.Download(downloadClient, useFileHierarchy, overwriteExisting)
 				if err != nil {
