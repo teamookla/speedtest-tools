@@ -43,7 +43,7 @@ try:
     response = compatible_urllib.urlopen(extracts_url).read()
 except compatible_urllib.HTTPError as error:
     if error.code == 401:
-        print("Authentication Error\nPlease verify that the API key and secrete are correct")
+        print("Authentication Error\nPlease verify that the API key and secret are correct")
     elif error.code == 404:
         print("The account associated with this API key does not have any files attached to it.\nPlease contact your technical account manager to enable data extracts for this account.")
     elif error.code == 500:
@@ -60,7 +60,7 @@ except ValueError as err:
 # loop through contents, sort through files and directories
 def sort_files_and_directories(contents, files={}):
     for entry in contents:
-        if entry['type'] == 'file' and entry['name'].find('headers') == -1 and '_20' in entry['name']:
+        if entry['type'] == 'file' and entry['name'].find('headers') == -1 and ('_20' in entry['name'] or '_export' in entry['name']):
             filter(entry, files)
         elif entry['type'] == 'dir':
             subdir = extracts_url + entry['url']
