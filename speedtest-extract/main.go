@@ -131,7 +131,7 @@ func main() {
 func RedirectLoggingPolicy() resty.RedirectPolicy {
 	return resty.RedirectPolicyFunc(func(req *http.Request, via []*http.Request) error {
 		if len(via) > 0 {
-			log.Debug(fmt.Sprintf("redirecting from %s to %s", via[0].URL, req.URL))
+			log.Debug(fmt.Sprintf("redirecting from %s to %s", via[len(via)-1].URL, req.URL))
 		}
 		return nil
 	})
@@ -246,7 +246,6 @@ func ExtractHandler(context *cli.Context, command string) error {
 
 	cache := ReadExtractsCache()
 	client := GetClient(false)
-
 	log.Debug(fmt.Sprintf("Client headers: %s", client.Header))
 	extracts, err := GetExtracts(client, "", cache)
 	if err != nil {
