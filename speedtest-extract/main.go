@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	easy "github.com/t-tomalak/logrus-easy-formatter"
 	"github.com/urfave/cli/v2"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -127,6 +128,15 @@ func main() {
 	}
 }
 
+func RedirectLoggingPolicy() resty.RedirectPolicy {
+	return resty.RedirectPolicyFunc(func(req *http.Request, via []*http.Request) error {
+		if len(via) > 0 {
+			log.Debug(fmt.Sprintf("redirecting from %s to %s", via[0].URL, req.URL))
+		}
+		return nil
+	})
+}
+
 func GetClient(downloadClient bool) *resty.Client {
 	client := resty.New()
 	if !downloadClient { //we only need to send these headers to the extract service, not for file download
@@ -134,6 +144,8 @@ func GetClient(downloadClient bool) *resty.Client {
 		client.SetHeader("Content-Type", "application/json")
 	}
 	client.SetHeader("User-Agent", fmt.Sprintf("ookla/speedtest-extract/%s", GetVersion()))
+	client.SetRedirectPolicy(RedirectLoggingPolicy())
+
 	return client
 }
 
@@ -234,6 +246,7 @@ func ExtractHandler(context *cli.Context, command string) error {
 
 	cache := ReadExtractsCache()
 	client := GetClient(false)
+
 	log.Debug(fmt.Sprintf("Client headers: %s", client.Header))
 	extracts, err := GetExtracts(client, "", cache)
 	if err != nil {
