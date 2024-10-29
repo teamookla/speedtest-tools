@@ -76,7 +76,7 @@ def filter(data_file, files):
     try:
         dataset = data_file['name'][:data_file['name'].index('_20')]
     except:
-        dataset = data_file['name'].split('_')[0]
+        dataset = data_file['name'] # for non-standard filenames, use the entire name as the dataset to ensure all files are downloaded
     if dataset not in files or data_file['mtime'] > files[dataset]['age']:
         files[dataset] = {'name': data_file['name'], 'url': data_file['url'], 'age': data_file['mtime']}
 
