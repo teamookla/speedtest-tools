@@ -61,7 +61,7 @@ except ValueError as err:
 # loop through contents, sort through files and directories
 def sort_files_and_directories(contents, files={}):
     for entry in contents:
-        if entry['type'] == 'file' and entry['name'].find('headers') == -1 and ('_20' in entry['name'] or '_export' in entry['name']):
+        if entry['type'] == 'file' and entry['name'].find('headers') == -1 and ('_20' in entry['name'] or '_export' in entry['name'] or 'csv.gz' in entry['name']):
             filter(entry, files)
         elif entry['type'] == 'dir':
             subdir = extracts_url + entry['url']
