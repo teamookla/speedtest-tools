@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -42,17 +43,19 @@ func (e *ExtractItem) IsDirectory() bool {
 }
 
 func (e *ExtractItem) IsDataset() bool {
-	return e.Type == "file" &&
-		!strings.Contains(e.Name, "headers") && //ignore header files
-		(strings.Contains(e.Name, "_20") || //ensure it's a filename containing a date to filter non-relevant files
-			strings.Contains(e.Name, "_export")) //newer CQoE files do not have the same filename structure
+	return e.Type == "file" && !strings.Contains(e.Name, "headers") //ignore header files
 }
 
 func (e *ExtractItem) DatasetName() string {
-	if strings.Contains(e.Name, "_export") || strings.Contains(e.Name, "csv.gz") {
+	pattern := regexp.MustCompile(`_20\d{2}-\d{2}-\d{2}`)
+	idx := pattern.FindIndex([]byte(e.Name))
+
+	if len(idx) > 0 {
+		return e.Name[0:idx[0]]
+	} else if strings.Contains(e.Name, "_export") || strings.Contains(e.Name, "csv.gz") {
 		return strings.Split(e.Name, "_")[0]
 	} else {
-		return e.Name[:strings.Index(e.Name, "_20")]
+		return e.Name
 	}
 }
 
