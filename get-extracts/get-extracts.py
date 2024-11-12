@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Ookla
-# Updated 5/30/18
+# Updated 11/12/24
 
 # This Python script queries a list of available data extract files from Speedtest Intelligence,
 # determines what data sets are available, and then downloads the most recent version of each.
@@ -16,6 +16,7 @@ import json
 import os
 import base64
 import sys
+import re
 
 extracts_url = 'https://intelligence.speedtest.net/extracts'
 
@@ -61,7 +62,7 @@ except ValueError as err:
 # loop through contents, sort through files and directories
 def sort_files_and_directories(contents, files={}):
     for entry in contents:
-        if entry['type'] == 'file' and entry['name'].find('headers') == -1 and ('_20' in entry['name'] or '_export' in entry['name'] or 'csv.gz' in entry['name']):
+        if entry['type'] == 'file' and entry['name'].find('headers') == -1:
             filter(entry, files)
         elif entry['type'] == 'dir':
             subdir = extracts_url + entry['url']
@@ -72,11 +73,15 @@ def sort_files_and_directories(contents, files={}):
 
 # determine if file should be downloaded - check for new datasets and most current file for exisiting datasets
 def filter(data_file, files):
-    # identify the dataset by the file name prefix
-    try:
-        dataset = data_file['name'][:data_file['name'].index('_20')]
-    except:
-        dataset = data_file['name'] # for non-standard filenames, use the entire name as the dataset to ensure all files are downloaded
+    date_reg = r"_20\d{2}-\d{2}-\d{2}"
+    match = re.search(date_reg, data_file['name'])
+    if match is not None:
+        idx = match.start()
+        dataset = data_file['name'][0:idx]
+    elif '_export' in data_file['name'] or 'csv.gz' in data_file['name']:
+        dataset = data_file['name'].split('_')[0]
+    else:
+        dataset = data_file['name']
     if dataset not in files or data_file['mtime'] > files[dataset]['age']:
         files[dataset] = {'name': data_file['name'], 'url': data_file['url'], 'age': data_file['mtime']}
 
