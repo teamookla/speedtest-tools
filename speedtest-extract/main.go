@@ -293,13 +293,24 @@ func ExtractHandler(context *cli.Context, command string) error {
 		if download {
 			downloadClient := GetClient(true)
 			log.Debug(fmt.Sprintf("Download client headers: %s", downloadClient.Header))
+			downloaded := 0
+			skipped := 0
+			errors := 0
 			for _, f := range files {
-				err = f.Download(downloadClient, useFileHierarchy, overwriteExisting)
+				success, err := f.Download(downloadClient, useFileHierarchy, overwriteExisting)
 				if err != nil {
 					//print the download error, but dont stop execution (should this be configurable?)
 					log.WithError(err).Error(fmt.Sprintf("error downloading %s", f.Item.Name))
+					errors += 1
+				} else {
+					if success {
+						downloaded += 1
+					} else {
+						skipped += 1
+					}
 				}
 			}
+			log.Info(fmt.Sprintf("Downloaded %d file(s), skipped %d existing file(s), encountered %d error(s)", downloaded, skipped, errors))
 		}
 	}
 

@@ -59,7 +59,7 @@ func (e *ExtractItem) DatasetName() string {
 	}
 }
 
-func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, overwriteExisting bool) error {
+func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, overwriteExisting bool) (bool, error) {
 	item := e.Item
 	if item.IsDataset() {
 		paths := []string{config.StorageDirectory}
@@ -74,7 +74,7 @@ func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, over
 			err := os.Mkdir(path, 0700)
 			errors.Is(err, os.ErrExist)
 			if err != nil && !errors.Is(err, os.ErrExist) {
-				return err
+				return false, err
 			}
 		}
 
@@ -87,22 +87,23 @@ func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, over
 				SetOutput(fileName).
 				Get(item.Url)
 			if err != nil {
-				return err
+				return false, err
 			}
 			log.Info(fmt.Sprintf("%s complete", e.Name))
 			stats, err := os.Stat(fileName)
 			if err != nil {
-				return err
+				return false, err
 			}
 			downloadSize := stats.Size()
 			if item.Size != downloadSize {
-				return fmt.Errorf("filesize mismatch for %s. expected: %d, received: %d", e.Name, item.Size, downloadSize)
+				return false, fmt.Errorf("filesize mismatch for %s. expected: %d, received: %d", e.Name, item.Size, downloadSize)
 			}
 		} else {
 			log.Info(fmt.Sprintf("%s exists, skipping. re-run with --overwrite-existing to download anyway", e.Name))
+			return false, nil
 		}
 	}
-	return nil
+	return true, nil
 }
 
 func WriteExtractsCache(cache *ExtractsCache) {
