@@ -38,6 +38,11 @@ type ExtractsCache struct {
 	Responses map[string][]*ExtractItem `json:"responses"`
 }
 
+type DownloadResult struct {
+	success bool
+	err     error
+}
+
 func (e *ExtractItem) IsDirectory() bool {
 	return e.Type == "dir"
 }
@@ -59,7 +64,7 @@ func (e *ExtractItem) DatasetName() string {
 	}
 }
 
-func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, overwriteExisting bool) (bool, error) {
+func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, overwriteExisting bool) DownloadResult {
 	item := e.Item
 	if item.IsDataset() {
 		paths := []string{config.StorageDirectory}
@@ -72,9 +77,8 @@ func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, over
 		for _, p := range paths {
 			path = filepath.Join(path, p)
 			err := os.Mkdir(path, 0700)
-			errors.Is(err, os.ErrExist)
 			if err != nil && !errors.Is(err, os.ErrExist) {
-				return false, err
+				return DownloadResult{false, err}
 			}
 		}
 
@@ -87,23 +91,25 @@ func (e *ExtractFile) Download(client *resty.Client, useFileHierarchy bool, over
 				SetOutput(fileName).
 				Get(item.Url)
 			if err != nil {
-				return false, err
+				return DownloadResult{false, err}
 			}
 			log.Info(fmt.Sprintf("%s complete", e.Name))
 			stats, err := os.Stat(fileName)
 			if err != nil {
-				return false, err
+				return DownloadResult{false, err}
 			}
 			downloadSize := stats.Size()
 			if item.Size != downloadSize {
-				return false, fmt.Errorf("filesize mismatch for %s. expected: %d, received: %d", e.Name, item.Size, downloadSize)
+				// remove the invalid file
+				_ = os.Remove(fileName)
+				return DownloadResult{false, fmt.Errorf("filesize mismatch for %s. expected: %d, received: %d", e.Name, item.Size, downloadSize)}
 			}
 		} else {
 			log.Info(fmt.Sprintf("%s exists, skipping. re-run with --overwrite-existing to download anyway", e.Name))
-			return false, nil
+			return DownloadResult{false, nil}
 		}
 	}
-	return true, nil
+	return DownloadResult{true, nil}
 }
 
 func WriteExtractsCache(cache *ExtractsCache) {
