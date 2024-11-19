@@ -63,6 +63,8 @@ The `--confirm` flag will skip this prompt and start downloading immediately.
 
 If a file already exists, it will be skipped unless the `--overwrite-existing` flag is used.
 
+By default downloads occur one at a time. To download multiple files concurrently, use the `--concurrency <int>` flag.
+
 ### Request Caching
 
 When enabled, request caching will speed up interactive filtering and viewing of the extracts list by caching the requests locally for a period of time. 

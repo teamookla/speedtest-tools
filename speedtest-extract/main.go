@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -117,6 +118,11 @@ func main() {
 						Name:  "use-file-hierarchy",
 						Usage: "Download files into a hierarchy based on the group and dataset names vs a flat list",
 						Value: false,
+					},
+					&cli.IntFlag{
+						Name:  "concurrency",
+						Usage: "Set the number of concurrent downloads",
+						Value: 1,
 					},
 				},
 			},
@@ -231,6 +237,16 @@ func ListFiles(files []ExtractFile) {
 	t.Render()
 }
 
+func downloadWorker(downloadChan <-chan ExtractFile, resultChan chan<- DownloadResult, downloadClient *resty.Client, useFileHierarchy bool, overwriteExisting bool) {
+	for file := range downloadChan {
+		result := file.Download(downloadClient, useFileHierarchy, overwriteExisting)
+		if result.err != nil {
+			log.WithError(result.err).Error(fmt.Sprintf("error downloading %s", file.Item.Name))
+		}
+		resultChan <- result
+	}
+}
+
 func ExtractHandler(context *cli.Context, command string) error {
 	args, err := GetGlobalOptions(context)
 	if err != nil {
@@ -265,11 +281,13 @@ func ExtractHandler(context *cli.Context, command string) error {
 		overwriteExisting := context.Bool("overwrite-existing")
 		confirm := context.Bool("confirm")
 		useFileHierarchy := context.Bool("use-file-hierarchy")
+		concurrency := context.Int("concurrency")
 
 		log.WithFields(log.Fields{
 			"overwriteExisting": overwriteExisting,
 			"confirm":           confirm,
 			"useFileHierarchy":  useFileHierarchy,
+			"concurrency":       concurrency,
 		}).Debug("download flags")
 
 		download := false
@@ -293,14 +311,32 @@ func ExtractHandler(context *cli.Context, command string) error {
 		if download {
 			downloadClient := GetClient(true)
 			log.Debug(fmt.Sprintf("Download client headers: %s", downloadClient.Header))
+
+			downloadChan := make(chan ExtractFile, len(files))
+			resultChan := make(chan DownloadResult, len(files))
+			var wg sync.WaitGroup
+			for i := range concurrency {
+				wg.Add(1)
+				go func(id int) {
+					defer wg.Done()
+					downloadWorker(downloadChan, resultChan, downloadClient, useFileHierarchy, overwriteExisting)
+				}(i)
+			}
+
+			for _, f := range files {
+				log.Debug(fmt.Sprintf("Adding %s to download queue", f.Name))
+				downloadChan <- f
+			}
+			close(downloadChan)
+			wg.Wait()
+			close(resultChan)
+
 			downloaded := 0
 			skipped := 0
 			errors := 0
-			for _, f := range files {
-				success, err := f.Download(downloadClient, useFileHierarchy, overwriteExisting)
+			for result := range resultChan {
+				success, err := result.success, result.err
 				if err != nil {
-					//print the download error, but dont stop execution (should this be configurable?)
-					log.WithError(err).Error(fmt.Sprintf("error downloading %s", f.Item.Name))
 					errors += 1
 				} else {
 					if success {
