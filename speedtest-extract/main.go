@@ -237,11 +237,11 @@ func ListFiles(files []ExtractFile) {
 	t.Render()
 }
 
-func downloadWorker(workChan <-chan ExtractFile, resultChan chan<- DownloadResult, downloadClient *resty.Client, useFileHierarchy bool, overwriteExisting bool) {
-	for w := range workChan {
-		result := w.Download(downloadClient, useFileHierarchy, overwriteExisting)
+func downloadWorker(downloadChan <-chan ExtractFile, resultChan chan<- DownloadResult, downloadClient *resty.Client, useFileHierarchy bool, overwriteExisting bool) {
+	for file := range downloadChan {
+		result := file.Download(downloadClient, useFileHierarchy, overwriteExisting)
 		if result.err != nil {
-			log.WithError(result.err).Error(fmt.Sprintf("error downloading %s", w.Item.Name))
+			log.WithError(result.err).Error(fmt.Sprintf("error downloading %s", file.Item.Name))
 		}
 		resultChan <- result
 	}
